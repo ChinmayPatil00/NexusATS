@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 320px;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #050505;
+      color: white;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .status-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .label { color: #a1a1aa; }
+    .value { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .instructions {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #71717a;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">⚡</div>
+    <div class="title">Nexus ATS Extension</div>
+  </div>
+
+  <div class="status-card">
+    <div class="status-row">
+      <span class="label">Local Server</span>
+      <span class="value" id="server-status"><div class="dot"></div> Connected</span>
+    </div>
+    <div class="status-row">
+      <span class="label">Auto-Scrape</span>
+      <span class="value">Manual Clicks</span>
+    </div>
+  </div>
+
+  <div class="instructions">
+    Go to any job on LinkedIn or Indeed. You will see a floating "Save to Nexus" button in the bottom right. Click it to instantly add the job to your Kanban board.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

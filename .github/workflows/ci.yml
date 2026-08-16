@@ -1,0 +1,42 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install Dependencies
+      run: npm ci
+      
+    - name: Build Database Client
+      run: npx prisma generate
+      working-directory: ./packages/database
+      
+    - name: Build Web App
+      run: npm run build --workspace=apps/web
+      
+    - name: Build API
+      run: npm run build --workspace=apps/api
+      
+    - name: Run Jest Tests (Scraper & API)
+      run: npm run test --workspaces --if-present
+      
+    - name: Run Cypress E2E Tests (Web)
+      uses: cypress-io/github-action@v5
+      with:
+        start: npm run start --workspace=apps/web
+        wait-on: 'http://localhost:3000'

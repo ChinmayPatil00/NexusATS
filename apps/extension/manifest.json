@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Nexus ATS",
+  "version": "1.0",
+  "description": "Bypass anti-bot mechanisms and save jobs directly from LinkedIn to Nexus ATS.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:4000/*",
+    "*://*.linkedin.com/*",
+    "*://*.indeed.com/*",
+    "*://*.naukri.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*", 
+        "*://*.indeed.com/*", 
+        "*://*.naukri.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
