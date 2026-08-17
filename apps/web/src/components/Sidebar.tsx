@@ -93,8 +93,8 @@ export function Sidebar() {
           </div>
 
           {isLoaded && userId ? (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--overlay)] border border-[var(--border-subtle)] shadow-inner">
-              <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-10 h-10 rounded-lg shadow-md" } }} />
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--overlay)] border border-[var(--border-subtle)]">
+              <UserButton appearance={{ elements: { avatarBox: "w-10 h-10 shadow-sm" } }} />
               <div className="flex flex-col overflow-hidden">
                 <span className="text-sm font-bold truncate text-[var(--text-main)]">{user?.fullName || 'User'}</span>
                 <span className="text-xs text-[var(--text-muted)] truncate">{user?.primaryEmailAddress?.emailAddress || ''}</span>

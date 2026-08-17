@@ -221,7 +221,7 @@ export function Navbar() {
 
           {isLoaded && userId ? (
             <div className="flex items-center gap-3 ml-2 pl-4 border-l border-[var(--border-subtle)]">
-              <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 rounded-full border border-[var(--border-strong)]" } }} />
+              <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 rounded-full border border-[var(--border-strong)]" } }} />
             </div>
           ) : (
             <div className="ml-2 flex items-center gap-2">
