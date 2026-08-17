@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, Code, Link as LinkIcon, Save, CheckCircle2, Loader2, Activity, FileText, UploadCloud } from 'lucide-react';
-import { useSession } from "next-auth/react";
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
