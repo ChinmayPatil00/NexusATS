@@ -230,9 +230,9 @@ export default function Dashboard() {
                 {isSaving ? (
                   <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" title="Saving & Refreshing..." />
                 ) : showSuccess ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-500" title="Saved!" />
+                  <span title="Saved!"><CheckCircle2 className="w-5 h-5 text-green-500" /></span>
                 ) : (
-                  <Save className="w-4 h-4 text-[var(--text-muted)]" title="Auto-saves on change" />
+                  <span title="Auto-saves on change"><Save className="w-4 h-4 text-[var(--text-muted)]" /></span>
                 )}
               </div>
             </div>
