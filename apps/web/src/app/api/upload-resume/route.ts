@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@job-aggregator-ats/database";
 import { auth } from "@clerk/nextjs/server";
-import pdfParse from "pdf-parse";
+const pdfParse = require("pdf-parse");
 
 export async function POST(req: NextRequest) {
   try {
