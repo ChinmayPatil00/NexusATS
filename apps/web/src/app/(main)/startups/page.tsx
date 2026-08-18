@@ -32,11 +32,59 @@ export default function StartupsPage() {
     return () => clearInterval(intervalId);
   }, []);
 
+  const [selectedRole, setSelectedRole] = useState("Software Engineer");
+  const [location, setLocation] = useState("Remote");
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(res => res.json())
+      .then(user => {
+        if (user && user.keywords) {
+          const kws = JSON.parse(user.keywords);
+          if (kws.length > 0) {
+            const kw = kws[0];
+            const role = kw.replace(/internship/i, '').replace(/intern/i, '').trim() || 'Software Engineer';
+            setSelectedRole(role);
+          }
+        }
+        if (user && user.locations) {
+          const locs = JSON.parse(user.locations);
+          if (locs.length > 0) setLocation(locs[0]);
+        }
+      })
+      .catch(err => console.error("Failed to fetch preferences:", err));
+  }, []);
+
   const filteredJobs = useMemo(() => {
     // Only show startup jobs
     const startupJobs = jobs.filter(j => j.source === 'YCombinator' || j.source === 'Wellfound');
 
     return startupJobs.filter(job => {
+      // Location filter
+      if (location !== 'All India') {
+        const jobLoc = (job.location || '').toLowerCase();
+        const targetLoc = location.toLowerCase();
+        
+        if (jobLoc === 'unknown' || jobLoc === '') {
+          return false;
+        }
+        
+        if (targetLoc === 'remote') {
+          if (!jobLoc.includes('remote')) return false;
+        } else {
+          if (!jobLoc.includes(targetLoc) && !targetLoc.includes(jobLoc)) return false;
+        }
+      }
+
+      // Role filter
+      if (selectedRole && selectedRole !== '') {
+        const jobTitle = job.title.toLowerCase();
+        const roleWords = selectedRole.toLowerCase().split(' ');
+        if (!roleWords.some(w => jobTitle.includes(w))) {
+          return false;
+        }
+      }
+
       // Platform filter
       if (filterPlatform !== "All Platforms" && job.source !== filterPlatform) return false;
 
@@ -45,7 +93,7 @@ export default function StartupsPage() {
       const matchesState = filterState === "ALL" || job.state === filterState;
       return matchesSearch && matchesState;
     }).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-  }, [jobs, search, filterState, filterPlatform]);
+  }, [jobs, search, filterState, filterPlatform, location, selectedRole]);
 
   const getMatchColor = (score?: number) => {
     if (score === undefined) return 'text-gray-400';
