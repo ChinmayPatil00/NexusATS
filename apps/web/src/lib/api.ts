@@ -25,8 +25,9 @@ export interface Job {
 }
 
 export const jobApi = {
-  getJobs: async (): Promise<Job[]> => {
-    const res = await fetch('/api/jobs');
+  getJobs: async (userId?: string): Promise<Job[]> => {
+    const url = userId ? `/api/jobs?userId=${userId}` : '/api/jobs';
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch jobs");
     return res.json();
   },

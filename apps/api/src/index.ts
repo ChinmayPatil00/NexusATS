@@ -163,9 +163,13 @@ app.post('/api/trigger-matching', (req, res) => {
 
 // GET /api/jobs - Fetch jobs for the dashboard
 app.get('/api/jobs', async (req, res) => {
+  const { userId } = req.query;
   try {
-    const jobs = await prisma.job.findMany({ orderBy: { createdAt: 'desc' }});
-    const user = await prisma.user.findFirst();
+    const jobs = await prisma.job.findMany({ 
+      where: userId ? { userId: String(userId) } : undefined,
+      orderBy: { createdAt: 'desc' }
+    });
+    const user = userId ? await prisma.user.findUnique({ where: { id: String(userId) } }) : await prisma.user.findFirst();
     
     // Calculate dynamic Match Score
     let keywords: string[] = [];
@@ -181,40 +185,41 @@ app.get('/api/jobs', async (req, res) => {
     const scoredJobs = jobs.map(job => {
       let score = job.matchScore ?? 50; // Base score from AI Matcher if available
       
-      const searchStr = `${job.title} ${job.company}`.toLowerCase();
+      const searchStr = (job.title + " " + job.company).toLowerCase();
       const jobLocStr = (job.location || '').toLowerCase();
       
-      // Keyword match
-      if (keywords.length > 0) {
-        if (keywords.some(k => searchStr.includes(k))) score += 20;
-        else score -= 10;
-      }
-
-      // Location match
-      if (targetLocations.length > 0 && targetLocations[0] !== 'all india' && targetLocations[0] !== 'remote' && targetLocations[0] !== '') {
-        // If the job has a location, and none of the target locations match
-        if (jobLocStr !== 'unknown' && jobLocStr !== '') {
-           const matchesLoc = targetLocations.some(tl => jobLocStr.includes(tl) || tl.includes(jobLocStr));
-           if (matchesLoc) {
-             score += 10;
-           } else {
-             // Heavily penalize jobs from a different location so they are hidden from the current active target
-             score -= 40;
-           }
+      if (job.matchScore == null) {
+        // Keyword match
+        if (keywords.length > 0) {
+          if (keywords.some(k => searchStr.includes(k))) score += 20;
+          else score -= 10;
         }
+        
+        // Location match
+        if (targetLocations.length > 0 && targetLocations[0] !== 'all india' && targetLocations[0] !== 'remote' && targetLocations[0] !== '') {
+          if (jobLocStr !== 'unknown' && jobLocStr !== '') {
+             const matchesLoc = targetLocations.some(tl => jobLocStr.includes(tl) || tl.includes(jobLocStr));
+             if (matchesLoc) {
+               score += 10;
+             } else {
+               // Heavily penalize jobs from a different location so they are hidden from the current active target
+               score -= 40;
+             }
+          }
+        }
+        
+        // Resume match (simple frequency check of job title words in resume)
+        if (resumeWords.length > 0) {
+          const titleWords = job.title.toLowerCase().split(/\W+/).filter(w => w.length > 3);
+          let matchCount = 0;
+          titleWords.forEach(w => {
+            if (resumeWords.includes(w)) matchCount++;
+          });
+          if (matchCount > 0 && job.matchScore == null) score += (matchCount * 5); // Only add simple resume match if AI hasn't scored it
+        }
+        
+        score = Math.min(Math.max(score, 10), 99); // Clamp between 10 and 99
       }
-      
-      // Resume match (simple frequency check of job title words in resume)
-      if (resumeWords.length > 0) {
-        const titleWords = job.title.toLowerCase().split(/\W+/).filter(w => w.length > 3);
-        let matchCount = 0;
-        titleWords.forEach(w => {
-          if (resumeWords.includes(w)) matchCount++;
-        });
-        if (matchCount > 0 && job.matchScore == null) score += (matchCount * 5); // Only add simple resume match if AI hasn't scored it
-      }
-      
-      score = Math.min(Math.max(score, 10), 99); // Clamp between 10 and 99
       
       return { ...job, matchScore: score };
     });

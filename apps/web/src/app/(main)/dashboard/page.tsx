@@ -65,9 +65,10 @@ export default function Dashboard() {
   };
 
   const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: jobApi.getJobs,
+    queryKey: ['jobs', user?.id],
+    queryFn: () => jobApi.getJobs(user?.id),
     refetchInterval: 3000,
+    enabled: !!user?.id,
   });
 
   const moveJobMutation = useMutation({

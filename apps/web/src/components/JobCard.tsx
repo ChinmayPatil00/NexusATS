@@ -36,7 +36,7 @@ export default function JobCard({ job, deleteJob, getNextState, moveJob, formatD
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
       ref={setNodeRef}
       style={style}
-      className={`group relative bg-[var(--surface)] border border-[var(--border-subtle)] hover:border-indigo-500/40 p-5 rounded-2xl transition-all duration-300 flex flex-col gap-4 overflow-hidden 
+      className={`group w-full h-full relative bg-[var(--surface)] border border-[var(--border-subtle)] hover:border-indigo-500/40 p-5 rounded-2xl transition-all duration-300 flex flex-col gap-4 overflow-hidden 
         ${isDragging ? 'cursor-grabbing border-indigo-500 ring-2 ring-indigo-500/50 shadow-2xl opacity-90 scale-105' : 'hover:-translate-y-1 hover:shadow-[0_15px_40px_-15px_rgba(99,102,241,0.2)]'}`}
     >
       <div 
