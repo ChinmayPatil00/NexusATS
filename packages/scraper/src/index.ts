@@ -13,8 +13,9 @@ async function notifyAPI(jobs: any[], targetUserId?: string) {
   console.log(`Found ${jobs.length} total jobs. Sending to API for deduplication and notification...`);
   
   for (const job of jobs) {
+    const port = process.env.PORT || 4000;
     try {
-      await fetch('http://localhost:4000/api/notify', {
+      await fetch(`http://localhost:${port}/api/notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
