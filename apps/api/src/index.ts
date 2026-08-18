@@ -11,7 +11,15 @@ const pdfParse = require('pdf-parse');
 import rateLimit from 'express-rate-limit';
 import { matchResumeToJobsBackground } from './services/aiMatcher';
 import winston from 'winston';
+import { spawn } from 'child_process';
 
+// Launch scraper in background
+const scraperPath = path.resolve(__dirname, '../../../packages/scraper');
+const scraperProcess = spawn('npx', ['tsx', 'src/index.ts'], {
+  cwd: scraperPath,
+  stdio: 'inherit',
+  shell: true
+});
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -132,7 +140,7 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
 app.post('/api/trigger-scrape', (req, res) => {
   // We use tsx to run the scraper index.ts, or just trigger the cron if it was exposed.
   // Actually, since the scraper is running in its own task with a cron, we can just run a one-off scrape.
-  const scraperPath = path.resolve(__dirname, '../../../../packages/scraper');
+  const scraperPath = path.resolve(__dirname, '../../../packages/scraper');
   console.log(`[API] Triggering manual scrape at ${scraperPath}`);
   
   // Fire and forget
