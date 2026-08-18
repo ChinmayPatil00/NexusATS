@@ -131,8 +131,35 @@ export default function Dashboard() {
   const dashboardJobs = jobs.filter(j => j.source !== 'YCombinator' && j.source !== 'Wellfound');
 
   const filteredJobs = dashboardJobs.filter(job => {
+    // Check location
+    if (location !== 'All India') {
+      const jobLoc = (job.location || '').toLowerCase();
+      const targetLoc = location.toLowerCase();
+      
+      if (jobLoc === 'unknown' || jobLoc === '') {
+        return false;
+      }
+      
+      if (targetLoc === 'remote') {
+        if (!jobLoc.includes('remote')) return false;
+      } else {
+        if (!jobLoc.includes(targetLoc) && !targetLoc.includes(jobLoc)) return false;
+      }
+    }
+
+    // Check role (basic matching using selectedRole keywords)
+    if (selectedRole && selectedRole !== '') {
+      const jobTitle = job.title.toLowerCase();
+      const roleWords = selectedRole.toLowerCase().split(' ');
+      if (!roleWords.some(w => jobTitle.includes(w))) {
+        return false;
+      }
+    }
+
+    // Check search query
     const searchString = `${job.title} ${job.company} ${job.location || ''} ${job.source}`.toLowerCase();
     if (searchQuery.trim() !== '') return searchString.includes(searchQuery.toLowerCase().trim());
+    
     return true;
   });
 
