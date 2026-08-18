@@ -33,7 +33,10 @@ export default function StartupsPage() {
   }, []);
 
   const filteredJobs = useMemo(() => {
-    return jobs.filter(job => {
+    // Only show startup jobs
+    const startupJobs = jobs.filter(j => j.source === 'YCombinator' || j.source === 'Wellfound');
+
+    return startupJobs.filter(job => {
       // Platform filter
       if (filterPlatform !== "All Platforms" && job.source !== filterPlatform) return false;
 

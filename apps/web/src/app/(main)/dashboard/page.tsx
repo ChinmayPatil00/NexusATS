@@ -127,7 +127,10 @@ export default function Dashboard() {
     return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
   };
 
-  const filteredJobs = jobs.filter(job => {
+  // Main page should not show startup jobs
+  const dashboardJobs = jobs.filter(j => j.source !== 'YCombinator' && j.source !== 'Wellfound');
+
+  const filteredJobs = dashboardJobs.filter(job => {
     const searchString = `${job.title} ${job.company} ${job.location || ''} ${job.source}`.toLowerCase();
     if (searchQuery.trim() !== '') return searchString.includes(searchQuery.toLowerCase().trim());
     return true;

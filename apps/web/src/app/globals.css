@@ -31,7 +31,7 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
