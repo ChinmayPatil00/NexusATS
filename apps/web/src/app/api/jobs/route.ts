@@ -115,9 +115,7 @@ export async function GET() {
       return { ...job, matchScore: score };
     });
 
-    // Only return jobs that match the current target (score >= 50) 
-    // OR jobs that the user has already interacted with (state !== 'NEW')
-    const filteredJobs = scoredJobs.filter(job => job.matchScore >= 50 || job.state !== 'NEW');
+    const filteredJobs = scoredJobs; // Show all jobs instead of filtering by score
 
     return NextResponse.json(filteredJobs);
   } catch (error) {

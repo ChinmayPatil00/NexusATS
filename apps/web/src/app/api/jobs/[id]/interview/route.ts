@@ -27,9 +27,9 @@ export async function POST(
       where: { id: userId }
     });
 
-    if (!user || !user.resumeText) {
-      return NextResponse.json({ error: "Resume text missing in profile. Please update your profile first." }, { status: 400 });
-    }
+    const resumeContext = user?.resumeText 
+      ? `Here is my resume:\n${user.resumeText}\n\nBased ONLY on the skills and experience in my resume compared to the requirements in the job description, generate EXACTLY 4 highly specific, challenging technical or behavioral interview questions that this company is likely to ask me.`
+      : `Based on the job title and description, generate EXACTLY 4 highly specific, challenging technical or behavioral interview questions that this company is likely to ask a candidate applying for this role.`;
 
     if (!process.env.GEMINI_API_KEY) {
         return NextResponse.json({ error: "GEMINI_API_KEY is not configured on the server." }, { status: 500 });
@@ -44,12 +44,10 @@ Job Title: ${job.title}
 Company: ${job.company}
 Job Description: ${job.description || 'Not provided'}
 
-Here is my resume:
-${user.resumeText}
+${resumeContext}
 
-Based ONLY on the skills and experience in my resume compared to the requirements in the job description, generate EXACTLY 4 highly specific, challenging technical or behavioral interview questions that this company is likely to ask me.
 Do not ask generic questions like "What are your strengths?"
-Ask things like "In your resume, you mentioned you built X using Y. How would you scale that to handle the traffic we expect at [Company]?"
+Ask things like "In your resume, you mentioned you built X using Y. How would you scale that to handle the traffic we expect at [Company]?" (or similar scenario-based questions based on the role).
 
 Format the output strictly as a JSON array of strings, for example:
 [

@@ -27,9 +27,9 @@ export async function POST(
       where: { id: userId }
     });
 
-    if (!user || !user.resumeText) {
-      return NextResponse.json({ error: "Resume text missing in profile. Please update your profile first." }, { status: 400 });
-    }
+    const resumeContext = user?.resumeText
+      ? `User's Resume:\n${user.resumeText}\n\nRequirements:\n1. Make it sound professional, confident, and concise (under 400 words).\n2. Highlight the most relevant skills from the resume that match the job title and description.\n3. Do not include placeholders like [Your Name] if the information is not provided; just write a solid body paragraph.\n4. If you have the user's name (${user?.name}), use it to sign off.`
+      : `Requirements:\n1. Make it sound professional, confident, and concise (under 400 words).\n2. Write a strong, generic cover letter tailored to the job description that the user can fill their own details into.\n3. Use placeholders like [Your Name] or [Your Previous Company] where appropriate so the user knows what to fill in.`;
 
     if (!process.env.GEMINI_API_KEY) {
         return NextResponse.json({ error: "GEMINI_API_KEY is not configured on the server." }, { status: 500 });
@@ -39,20 +39,14 @@ export async function POST(
 
     const prompt = `
 You are an expert career coach and professional copywriter.
-Please write a highly tailored, professional cover letter for the following job opportunity based on the provided resume.
+Please write a highly tailored, professional cover letter for the following job opportunity.
 
 Job Title: ${job.title}
 Company: ${job.company}
 Job Description: ${job.description || 'Not provided'}
 
-User's Resume:
-${user.resumeText}
+${resumeContext}
 
-Requirements:
-1. Make it sound professional, confident, and concise (under 400 words).
-2. Highlight the most relevant skills from the resume that match the job title and description.
-3. Do not include placeholders like [Your Name] if the information is not provided; just write a solid body paragraph.
-4. If you have the user's name (${user.name}), use it to sign off.
 5. Format the output with clean spacing.
 `;
 
