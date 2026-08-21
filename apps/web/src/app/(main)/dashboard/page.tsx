@@ -10,8 +10,10 @@ import { jobApi, Job, JobState } from '@/lib/api';
 import JobCard from '@/components/JobCard';
 import KanbanTab from '@/components/KanbanTab';
 import CustomSelect from '@/components/CustomSelect';
+import { useUser } from '@clerk/nextjs';
 
 export default function Dashboard() {
+  const { user } = useUser();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<JobState>('NEW');
