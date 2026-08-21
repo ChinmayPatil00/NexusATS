@@ -13,7 +13,7 @@ export async function GET() {
     let jobs = await prisma.job.findMany({
       where: { userId: userId },
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: 1000,
     });
 
     // Fallback for Auth Migration: If no jobs found for this new Clerk user,
@@ -45,7 +45,7 @@ export async function GET() {
         jobs = await prisma.job.findMany({
           where: { userId: userId },
           orderBy: { createdAt: "desc" },
-          take: 200,
+          take: 1000,
         });
       }
     }
