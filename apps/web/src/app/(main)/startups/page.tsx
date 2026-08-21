@@ -57,7 +57,10 @@ export default function StartupsPage() {
 
   const filteredJobs = useMemo(() => {
     // Only show startup jobs
-    const startupJobs = jobs.filter(j => j.source === 'YCombinator' || j.source === 'Wellfound');
+    const startupJobs = jobs.filter(j => {
+      const src = (j.source || '').toLowerCase();
+      return src === 'ycombinator' || src === 'wellfound';
+    });
 
     return startupJobs.filter(job => {
       // Location filter

@@ -128,7 +128,10 @@ export default function Dashboard() {
   };
 
   // Main page should not show startup jobs
-  const dashboardJobs = jobs.filter(j => j.source !== 'YCombinator' && j.source !== 'Wellfound');
+  const dashboardJobs = jobs.filter(j => {
+    const src = (j.source || '').toLowerCase();
+    return src !== 'ycombinator' && src !== 'wellfound';
+  });
 
   const filteredJobs = dashboardJobs.filter(job => {
     // Check location
