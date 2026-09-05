@@ -1,31 +1,19 @@
 import { PrismaClient } from '@prisma/client';
-import path from 'path';
-import fs from 'fs';
 
-function getPrismaUrl(): string | undefined {
-  const envUrl = process.env.DATABASE_URL;
-  if (envUrl) {
-    return envUrl;
-  }
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-  const candidates = [
-    path.resolve(process.cwd(), 'packages/database/prisma/dev.db'),
-    path.resolve(process.cwd(), '../../packages/database/prisma/dev.db'),
-    path.resolve(process.cwd(), '../packages/database/prisma/dev.db')
-  ];
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient(
+    process.env.DATABASE_URL
+      ? { datasources: { db: { url: process.env.DATABASE_URL } } }
+      : undefined
+  );
 
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return `file:${candidate.replace(/\\/g, '/')}`;
-    }
-  }
-
-  return undefined;
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
 }
 
-const resolvedUrl = getPrismaUrl();
-
-export const prisma = new PrismaClient(
-  resolvedUrl ? { datasources: { db: { url: resolvedUrl } } } : undefined
-);
 export * from '@prisma/client';

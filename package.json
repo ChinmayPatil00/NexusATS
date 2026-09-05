@@ -13,6 +13,8 @@
     "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma"
   },
   "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.0",
     "prisma": "^5.22.0"
   }
 }
