@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Zap, Search, MapPin, Save, CheckCircle2, Filter } from 'lucide-react';
+import { Briefcase, Zap, Search, MapPin, Save, CheckCircle2, Filter, RefreshCw, RotateCcw } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, useSensor, useSensors, MouseSensor, TouchSensor } from '@dnd-kit/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { jobApi, Job, JobState } from '@/lib/api';
+import { matchesLocationFilter, matchesRoleFilter } from '@/lib/filters';
 import JobCard from '@/components/JobCard';
 import KanbanTab from '@/components/KanbanTab';
 import CustomSelect from '@/components/CustomSelect';
@@ -20,10 +21,11 @@ export default function Dashboard() {
   const [isDraggingAny, setIsDraggingAny] = useState(false);
 
   // Target Prefs State
-  const [selectedRole, setSelectedRole] = useState("Software Engineer");
+  const [selectedRole, setSelectedRole] = useState("All Roles");
   const [selectedType, setSelectedType] = useState("Full-Time");
-  const [location, setLocation] = useState("Remote");
+  const [location, setLocation] = useState("All Locations");
   const [isSaving, setIsSaving] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
@@ -50,20 +52,34 @@ export default function Dashboard() {
 
   const handleAutoSave = (role: string, type: string, loc: string) => {
     setIsSaving(true);
-    let keyword = role;
-    if (type === "Internship") keyword = `${role} Intern`;
-    if (type === "Contract") keyword = `${role} Contract`;
+    let keyword = role === "All Roles" ? "Software Engineer" : role;
+    if (type === "Internship" && !keyword.toLowerCase().includes("intern")) keyword = `${keyword} Intern`;
+    if (type === "Contract") keyword = `${keyword} Contract`;
     fetch('/api/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keywords: [keyword], locations: [loc] })
     }).then(() => {
-      fetch('/api/trigger-scrape', { method: 'POST' }).catch(() => {});
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
       setIsSaving(false);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      setTimeout(() => setShowSuccess(false), 2000);
     }).catch(() => setIsSaving(false));
+  };
+
+  const handleTriggerScrape = async () => {
+    setIsScraping(true);
+    toast.info("Scraper dispatched in background to fetch latest jobs...");
+    try {
+      await fetch('/api/trigger-scrape', { method: 'POST' });
+      toast.success("AI Scraper running in background!");
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        setIsScraping(false);
+      }, 5000);
+    } catch {
+      toast.error("Failed to trigger scraper");
+      setIsScraping(false);
+    }
   };
 
   const { data: jobs = [], isLoading } = useQuery({
@@ -129,36 +145,21 @@ export default function Dashboard() {
     return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
   };
 
-  // Main page should not show startup jobs
+  // Main page should not show startup jobs (they have their own dedicated Startups tab)
   const dashboardJobs = jobs.filter(j => {
     const src = (j.source || '').toLowerCase().trim();
     return !src.includes('ycombinator') && !src.includes('wellfound');
   });
 
   const filteredJobs = dashboardJobs.filter(job => {
-    // Check location
-    if (location !== 'All India') {
-      const jobLoc = (job.location || '').toLowerCase();
-      const targetLoc = location.toLowerCase();
-      
-      if (jobLoc === 'unknown' || jobLoc === '') {
-        return false;
-      }
-      
-      if (targetLoc === 'remote') {
-        if (!jobLoc.includes('remote')) return false;
-      } else {
-        if (!jobLoc.includes(targetLoc) && !targetLoc.includes(jobLoc)) return false;
-      }
+    // Smart location check
+    if (!matchesLocationFilter(job.location, location)) {
+      return false;
     }
 
-    // Check role (basic matching using selectedRole keywords)
-    if (selectedRole && selectedRole !== '') {
-      const jobTitle = job.title.toLowerCase();
-      const roleWords = selectedRole.toLowerCase().split(' ');
-      if (!roleWords.some(w => jobTitle.includes(w))) {
-        return false;
-      }
+    // Smart role check
+    if (!matchesRoleFilter(job.title, selectedRole)) {
+      return false;
     }
 
     // Check search query
@@ -218,7 +219,7 @@ export default function Dashboard() {
               
               <CustomSelect
                 value={selectedRole}
-                options={["Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Engineer", "Data Scientist", "Product Manager"]}
+                options={["All Roles", "Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Engineer", "Data Scientist", "Product Manager"]}
                 onChange={(val) => {
                   setSelectedRole(val);
                   handleAutoSave(val, selectedType, location);
@@ -243,6 +244,7 @@ export default function Dashboard() {
               <CustomSelect
                 value={location}
                 options={[
+                  "All Locations",
                   "Remote", 
                   "Mumbai, India",
                   "Bengaluru, India", 
@@ -271,6 +273,20 @@ export default function Dashboard() {
                   <span title="Auto-saves on change"><Save className="w-4 h-4 text-[var(--text-muted)]" /></span>
                 )}
               </div>
+
+              <button
+                onClick={handleTriggerScrape}
+                disabled={isScraping}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all shadow-sm shrink-0 ${
+                  isScraping
+                    ? 'bg-indigo-500/20 text-indigo-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white shadow-indigo-500/20 cursor-pointer'
+                }`}
+                title="Run background job scraper"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isScraping ? 'animate-spin' : ''}`} />
+                <span>{isScraping ? 'Scraping...' : 'Run AI Scraper'}</span>
+              </button>
             </div>
             
             {/* Search Input for Kanban */}
@@ -325,6 +341,19 @@ export default function Dashboard() {
                         <Briefcase className="w-8 h-8 text-[var(--text-muted)]" />
                       </div>
                       <p className="text-[var(--text-secondary)] font-medium text-lg">No jobs in {activeCol?.label}</p>
+                      {(selectedRole !== "All Roles" || location !== "All Locations" || searchQuery !== "") && (
+                        <button
+                          onClick={() => {
+                            setSelectedRole("All Roles");
+                            setLocation("All Locations");
+                            setSearchQuery("");
+                          }}
+                          className="mt-4 px-4 py-2 text-xs font-semibold text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Reset Filters & Show All
+                        </button>
+                      )}
                     </motion.div>
                   );
                 }

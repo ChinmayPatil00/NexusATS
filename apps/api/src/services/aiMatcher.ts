@@ -79,7 +79,7 @@ Output ONLY a strict JSON object with no markdown wrappers or additional text, i
 `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-3.6-flash',
           contents: prompt,
         });
 

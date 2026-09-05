@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@job-aggregator-ats/database";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,19 +9,45 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    // Upsert the user so it's created if it doesn't exist yet
+    let clerkEmail: string | undefined;
+    let clerkName: string | undefined;
+    let clerkImage: string | undefined;
+
+    try {
+      const clerkUser = await currentUser();
+      if (clerkUser) {
+        clerkEmail = clerkUser.emailAddresses?.[0]?.emailAddress;
+        clerkName = clerkUser.fullName || [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || undefined;
+        clerkImage = clerkUser.imageUrl || undefined;
+      }
+    } catch {
+      // Fallback gracefully if currentUser() is unavailable
+    }
+
+    const defaultEmail = clerkEmail || `${userId}@clerk.local`;
+
     const user = await prisma.user.upsert({
       where: { id: userId },
-      update: {},
+      update: {
+        ...(clerkName ? { name: clerkName } : {}),
+        ...(clerkImage ? { image: clerkImage } : {}),
+      },
       create: {
         id: userId,
-        email: "placeholder@clerk.com",
+        email: defaultEmail,
+        name: clerkName || null,
+        image: clerkImage || null,
         keywords: '["Software Engineer"]',
         locations: '["Remote"]'
       }
     });
 
-    return NextResponse.json(user);
+    return NextResponse.json({
+      ...user,
+      email: clerkEmail || user.email,
+      name: user.name || clerkName,
+      image: user.image || clerkImage,
+    });
   } catch (error) {
     console.error("Error fetching profile:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

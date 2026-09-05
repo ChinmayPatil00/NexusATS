@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@job-aggregator-ats/database": ["../../packages/database/src/index.ts"]
     }
   },
   "include": [

@@ -38,7 +38,7 @@ export async function GET(
           update: {},
           create: {
             id: userId,
-            email: "placeholder@clerk.com",
+            email: `${userId}@clerk.local`,
             keywords: '["Software Engineer"]',
             locations: '["Remote"]'
           }
@@ -76,9 +76,19 @@ export async function PATCH(
     const { id } = await params;
     const data = await req.json();
 
-    const job = await prisma.job.findFirst({
+    let job = await prisma.job.findFirst({
       where: { id: id, userId: userId }
     });
+
+    if (!job) {
+      const existing = await prisma.job.findUnique({ where: { id } });
+      if (existing) {
+        job = await prisma.job.update({
+          where: { id },
+          data: { userId: userId }
+        });
+      }
+    }
 
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });

@@ -2,12 +2,15 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Job, jobApi } from "@/lib/api";
-import { Search, Loader2, MapPin, Building2, ExternalLink, Sparkles, Filter, Rocket } from "lucide-react";
+import { Search, Loader2, MapPin, Building2, ExternalLink, Sparkles, Filter, Rocket, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import CustomSelect from "@/components/CustomSelect";
+import { useUser } from "@clerk/nextjs";
+import { matchesLocationFilter, matchesRoleFilter } from "@/lib/filters";
 
 export default function StartupsPage() {
+  const { user } = useUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -17,7 +20,7 @@ export default function StartupsPage() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const data = await jobApi.getJobs();
+        const data = await jobApi.getJobs(user?.id);
         setJobs(data);
       } catch (err) {
         console.error(err);
@@ -30,68 +33,36 @@ export default function StartupsPage() {
     const intervalId = setInterval(fetchJobs, 3000);
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [user?.id]);
 
-  const [selectedRole, setSelectedRole] = useState("Software Engineer");
-  const [location, setLocation] = useState("Remote");
-
-  useEffect(() => {
-    fetch('/api/profile')
-      .then(res => res.json())
-      .then(user => {
-        if (user && user.keywords) {
-          const kws = JSON.parse(user.keywords);
-          if (kws.length > 0) {
-            const kw = kws[0];
-            const role = kw.replace(/internship/i, '').replace(/intern/i, '').trim() || 'Software Engineer';
-            setSelectedRole(role);
-          }
-        }
-        if (user && user.locations) {
-          const locs = JSON.parse(user.locations);
-          if (locs.length > 0) setLocation(locs[0]);
-        }
-      })
-      .catch(err => console.error("Failed to fetch preferences:", err));
-  }, []);
+  const [selectedRole, setSelectedRole] = useState("All Roles");
+  const [location, setLocation] = useState("All Locations");
 
   const filteredJobs = useMemo(() => {
-    // Only show startup jobs
-    const startupJobs = jobs.filter(j => {
+    // Filter by platform
+    const platformJobs = jobs.filter(j => {
       const src = (j.source || '').toLowerCase().trim();
+      if (filterPlatform !== "All Platforms") {
+        return src.includes(filterPlatform.toLowerCase());
+      }
       return src.includes('ycombinator') || src.includes('wellfound');
     });
 
-    return startupJobs.filter(job => {
+    return platformJobs.filter(job => {
       // Location filter
-      if (location !== 'All India') {
-        const jobLoc = (job.location || '').toLowerCase();
-        const targetLoc = location.toLowerCase();
-        
-        if (jobLoc === 'unknown' || jobLoc === '') {
-          return false;
-        }
-        
-        if (targetLoc === 'remote') {
-          if (!jobLoc.includes('remote')) return false;
-        } else {
-          if (!jobLoc.includes(targetLoc) && !targetLoc.includes(jobLoc)) return false;
-        }
-      }
+      if (!matchesLocationFilter(job.location, location)) return false;
 
       // Role filter
-      if (selectedRole && selectedRole !== '') {
-        const jobTitle = job.title.toLowerCase();
-        const roleWords = selectedRole.toLowerCase().split(' ');
-        if (!roleWords.some(w => jobTitle.includes(w))) {
-          return false;
-        }
+      if (!matchesRoleFilter(job.title, selectedRole)) return false;
+
+      // Platform filter (exact if selected)
+      if (filterPlatform !== "All Platforms") {
+        const src = (job.source || '').toLowerCase();
+        if (!src.includes(filterPlatform.toLowerCase())) return false;
       }
 
-      // Platform filter
-      if (filterPlatform !== "All Platforms" && job.source !== filterPlatform) return false;
-
-      const matchesSearch = job.title.toLowerCase().includes(search.toLowerCase()) || 
+      const matchesSearch = !search ||
+                            job.title.toLowerCase().includes(search.toLowerCase()) || 
                             job.company.toLowerCase().includes(search.toLowerCase());
       const matchesState = filterState === "ALL" || job.state === filterState;
       return matchesSearch && matchesState;
@@ -144,8 +115,8 @@ export default function StartupsPage() {
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center gap-3 bg-[var(--surface)] border border-[var(--border-strong)] p-2 rounded-xl shadow-sm">
-            <div className="relative w-full sm:w-64">
+          <div className="flex flex-wrap items-center gap-3 bg-[var(--surface)] border border-[var(--border-strong)] p-2 rounded-xl shadow-sm">
+            <div className="relative w-full sm:w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
               <input 
                 type="text" 
@@ -155,6 +126,37 @@ export default function StartupsPage() {
                 className="w-full bg-transparent border-none pl-9 pr-4 py-1.5 text-sm font-semibold text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-0"
               />
             </div>
+
+            <div className="hidden sm:block w-px h-6 bg-[var(--border-strong)] mx-1" />
+
+            <CustomSelect
+              value={selectedRole}
+              options={["All Roles", "Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Engineer", "Data Scientist", "Product Manager"]}
+              onChange={(val) => setSelectedRole(val)}
+              dropdownClassName="w-48"
+            />
+
+            <div className="hidden sm:block w-px h-6 bg-[var(--border-strong)] mx-1" />
+
+            <CustomSelect
+              value={location}
+              options={[
+                "All Locations",
+                "Remote", 
+                "San Francisco, CA",
+                "Bengaluru, India", 
+                "Mumbai, India",
+                "Pune, India", 
+                "Hyderabad, India", 
+                "NCR/Delhi, India", 
+                "New York, NY", 
+                "London, UK"
+              ]}
+              onChange={(val) => setLocation(val)}
+              icon={<MapPin className="w-3.5 h-3.5" />}
+              dropdownClassName="w-48"
+            />
+            
             <div className="hidden sm:block w-px h-6 bg-[var(--border-strong)] mx-1" />
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="relative w-full sm:w-auto flex items-center">
@@ -167,7 +169,7 @@ export default function StartupsPage() {
                   dropdownClassName="w-40"
                 />
               </div>
-              <div className="hidden sm:block w-px h-4 bg-[var(--border-strong)] mx-1" />
+              <div className="hidden sm:block w-px h-6 bg-[var(--border-strong)] mx-1" />
               <div className="relative w-full sm:w-auto flex items-center">
                 <Filter className="absolute left-3 w-4 h-4 text-[var(--text-muted)] pointer-events-none z-10" />
                 <CustomSelect 
@@ -197,9 +199,24 @@ export default function StartupsPage() {
               <Rocket className="w-8 h-8 text-[var(--text-muted)]" />
             </div>
             <p className="text-[var(--text-secondary)] font-medium text-lg">No startup jobs found</p>
-            <p className="text-[var(--text-muted)] text-sm mt-2 text-center max-w-[300px]">
-              Make sure your Target preferences are saved, or trigger the AI scraper.
+            <p className="text-[var(--text-muted)] text-sm mt-2 text-center max-w-[320px]">
+              Try adjusting your search, location, or platform filters.
             </p>
+            {(selectedRole !== "All Roles" || location !== "All Locations" || filterPlatform !== "All Platforms" || filterState !== "ALL" || search !== "") && (
+              <button
+                onClick={() => {
+                  setSelectedRole("All Roles");
+                  setLocation("All Locations");
+                  setFilterPlatform("All Platforms");
+                  setFilterState("ALL");
+                  setSearch("");
+                }}
+                className="mt-4 px-4 py-2 text-xs font-semibold text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset Filters & Show All
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">

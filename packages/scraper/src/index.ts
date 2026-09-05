@@ -6,30 +6,62 @@ import { scrapeUnstop } from './unstop';
 import { scrapeYCombinator } from './ycombinator';
 import { scrapeWellfound } from './wellfound';
 
+let isScraperActive = false;
+
 // Helper to notify the API when new jobs are found
 async function notifyAPI(jobs: any[], targetUserId?: string) {
   if (jobs.length === 0) return;
-  
-  console.log(`Found ${jobs.length} total jobs. Sending to API for deduplication and notification...`);
-  
-  for (const job of jobs) {
-    const port = process.env.PORT || 4000;
-    try {
-      await fetch(`http://localhost:${port}/api/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobTitle: job.title,
-          company: job.company,
-          url: job.url,
-          source: job.source,
-          location: job.location || "Unknown",
-          userId: targetUserId
-        })
-      });
-    } catch (err) {
-      console.error('Failed to notify API for job:', job.title);
+  const port = process.env.PORT || 4000;
+  console.log(`Found ${jobs.length} total jobs. Sending to API for bulk ingestion...`);
+
+  // Try bulk endpoint first for maximum speed (<50ms)
+  try {
+    const res = await fetch(`http://localhost:${port}/api/notify-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobs: jobs.map(j => ({
+          title: j.title,
+          company: j.company,
+          url: j.url,
+          source: j.source,
+          location: j.location || "Unknown"
+        })),
+        userId: targetUserId
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (res.ok) {
+      const data: any = await res.json();
+      console.log(`⚡ [API Bulk] Successfully processed ${jobs.length} jobs (${data.savedCount ?? 0} newly saved)!`);
+      return;
     }
+  } catch (err: any) {
+    console.warn(`[API Bulk] Batch notify failed (${err.message}), falling back to concurrent single notifications...`);
+  }
+
+  // Fallback: Concurrent chunks of 10
+  const chunkSize = 10;
+  for (let i = 0; i < jobs.length; i += chunkSize) {
+    const chunk = jobs.slice(i, i + chunkSize);
+    await Promise.allSettled(
+      chunk.map(job =>
+        fetch(`http://localhost:${port}/api/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobTitle: job.title,
+            company: job.company,
+            url: job.url,
+            source: job.source,
+            location: job.location || "Unknown",
+            userId: targetUserId
+          }),
+          signal: AbortSignal.timeout(5000)
+        }).catch(() => {})
+      )
+    );
   }
 }
 
@@ -38,7 +70,13 @@ import { scrapeInternshala } from './internshala';
 import { prisma } from '@job-aggregator-ats/database';
 
 async function runAllScrapers(targetUserId?: string) {
-  console.log(`[${new Date().toISOString()}] 🚀 Starting Scraper Job...`);
+  if (isScraperActive) {
+    console.log('[Scraper] Another scrape is currently active. Skipping duplicate run.');
+    return;
+  }
+  isScraperActive = true;
+  const startTime = Date.now();
+  console.log(`[${new Date().toISOString()}] 🚀 Starting Scraper Job (High-Speed Parallel Mode)...`);
   
   try {
     const user = targetUserId 
@@ -59,96 +97,60 @@ async function runAllScrapers(targetUserId?: string) {
       console.error('Failed to parse user preferences from DB', e);
     }
     
-    // We just take the first preference for now for simplicity,
-    // or we could loop over all of them.
     const keywords = keywordsArray[0] || 'Software Engineer';
     const location = locationsArray[0] || 'Remote';
     
     console.log(`Using preferences -> Role: ${keywords}, Location: ${location}`);
 
-    console.log('Scraping LinkedIn...');
-    const allJobs: any[] = [];
-    try {
-      const linkedInJobs = await scrapeLinkedIn(keywords, location);
-      console.log(`✅ LinkedIn scraped ${linkedInJobs.length} jobs.`);
-      allJobs.push(...linkedInJobs);
-    } catch (e: any) {
-      console.error(`❌ LinkedIn failed: ${e.message}`);
-    }
-
-    console.log('Scraping Indeed...');
-    try {
-      const indeedJobs = await scrapeIndeed(keywords, location);
-      console.log(`✅ Indeed scraped ${indeedJobs.length} jobs.`);
-      allJobs.push(...indeedJobs);
-    } catch (e: any) {
-      console.error(`❌ Indeed failed: ${e.message}`);
-    }
-
-    console.log('Scraping Naukri...');
-    try {
-      const naukriJobs = await scrapeNaukri(keywords, location);
-      console.log(`✅ Naukri scraped ${naukriJobs.length} jobs.`);
-      allJobs.push(...naukriJobs);
-    } catch (e: any) {
-      console.error(`❌ Naukri failed: ${e.message}`);
-    }
+    const scraperTasks = [
+      { name: 'LinkedIn', fn: () => scrapeLinkedIn(keywords, location) },
+      { name: 'Indeed', fn: () => scrapeIndeed(keywords, location) },
+      { name: 'Naukri', fn: () => scrapeNaukri(keywords, location) },
+      { name: 'Apna', fn: () => scrapeApna(keywords, location) },
+      { name: 'Unstop', fn: () => scrapeUnstop(keywords, location) },
+      { name: 'YCombinator', fn: () => scrapeYCombinator(keywords, location) },
+      { name: 'Wellfound', fn: () => scrapeWellfound(keywords, location) },
+    ];
 
     if (keywords.toLowerCase().includes('intern') || keywordsArray.some((k: string) => k.toLowerCase().includes('intern'))) {
-       console.log('Scraping Internshala...');
-       try {
-         const internshalaJobs = await scrapeInternshala(keywords, location);
-         console.log(`✅ Internshala scraped ${internshalaJobs.length} jobs.`);
-         allJobs.push(...internshalaJobs);
-       } catch (e: any) {
-         console.error(`❌ Internshala failed: ${e.message}`);
-       }
-    } else {
-       console.log('Skipping Internshala as no "intern" keyword found.');
+      scraperTasks.push({ name: 'Internshala', fn: () => scrapeInternshala(keywords, location) });
     }
 
-    console.log('Scraping Apna...');
-    try {
-      const apnaJobs = await scrapeApna(keywords, location);
-      console.log(`✅ Apna scraped ${apnaJobs.length} jobs.`);
-      allJobs.push(...apnaJobs);
-    } catch (e: any) {
-      console.error(`❌ Apna failed: ${e.message}`);
+    console.log(`⚡ Dispatching ${scraperTasks.length} scrapers in parallel...`);
+    const allJobs: any[] = [];
+
+    const results = await Promise.allSettled(
+      scraperTasks.map(async (task) => {
+        const taskStart = Date.now();
+        try {
+          const jobs = await task.fn();
+          const taskDuration = ((Date.now() - taskStart) / 1000).toFixed(1);
+          console.log(`✅ [${task.name}] Scraped ${jobs.length} jobs in ${taskDuration}s.`);
+          return jobs;
+        } catch (e: any) {
+          console.error(`❌ [${task.name}] Failed: ${e.message}`);
+          return [];
+        }
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        allJobs.push(...result.value);
+      }
     }
 
-    console.log('Scraping Unstop...');
-    try {
-      const unstopJobs = await scrapeUnstop(keywords, location);
-      console.log(`✅ Unstop scraped ${unstopJobs.length} jobs.`);
-      allJobs.push(...unstopJobs);
-    } catch (e: any) {
-      console.error(`❌ Unstop failed: ${e.message}`);
-    }
-
-    console.log('Scraping YCombinator...');
-    try {
-      const ytcJobs = await scrapeYCombinator(keywords, location);
-      console.log(`✅ YCombinator scraped ${ytcJobs.length} jobs.`);
-      allJobs.push(...ytcJobs);
-    } catch (e: any) {
-      console.error(`❌ YCombinator failed: ${e.message}`);
-    }
-
-    console.log('Scraping Wellfound...');
-    try {
-      const wfJobs = await scrapeWellfound(keywords, location);
-      console.log(`✅ Wellfound scraped ${wfJobs.length} jobs.`);
-      allJobs.push(...wfJobs);
-    } catch (e: any) {
-      console.error(`❌ Wellfound failed: ${e.message}`);
-    }
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`🎉 All scrapers completed in ${elapsed}s! Total opportunities scraped: ${allJobs.length}`);
 
     await notifyAPI(allJobs, user.id);
 
   } catch (error) {
     console.error('❌ Error during scraping run:', error);
   } finally {
-    console.log(`[${new Date().toISOString()}] 🏁 Scraper Job Finished.\n`);
+    isScraperActive = false;
+    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[${new Date().toISOString()}] 🏁 Scraper Job Finished in ${totalElapsed}s.\n`);
   }
 }
 

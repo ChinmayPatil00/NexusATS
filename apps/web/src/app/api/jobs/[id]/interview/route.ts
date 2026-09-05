@@ -15,8 +15,8 @@ export async function POST(
 
     const { id } = await params;
 
-    const job = await prisma.job.findFirst({
-      where: { id: id, userId: userId }
+    const job = await prisma.job.findUnique({
+      where: { id: id }
     });
 
     if (!job) {
@@ -29,16 +29,15 @@ export async function POST(
 
     const resumeContext = user?.resumeText 
       ? `Here is my resume:\n${user.resumeText}\n\nBased ONLY on the skills and experience in my resume compared to the requirements in the job description, generate EXACTLY 4 highly specific, challenging technical or behavioral interview questions that this company is likely to ask me.`
-      : `Based on the job title and description, generate EXACTLY 4 highly specific, challenging technical or behavioral interview questions that this company is likely to ask a candidate applying for this role.`;
+      : `Based on the job title (${job.title}) and company (${job.company}), generate EXACTLY 4 highly specific, challenging technical or behavioral interview questions that this company is likely to ask a candidate applying for this role.`;
 
-    if (!process.env.GEMINI_API_KEY) {
-        return NextResponse.json({ error: "GEMINI_API_KEY is not configured on the server." }, { status: 500 });
-    }
+    let questions: string[] = [];
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-    const prompt = `
-You are an expert technical interviewer and career coach.
+    // 1. If GEMINI_API_KEY is present, attempt live AI question generation
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const prompt = `You are an expert technical interviewer and career coach.
 I am preparing for an interview for the following job:
 Job Title: ${job.title}
 Company: ${job.company}
@@ -47,7 +46,7 @@ Job Description: ${job.description || 'Not provided'}
 ${resumeContext}
 
 Do not ask generic questions like "What are your strengths?"
-Ask things like "In your resume, you mentioned you built X using Y. How would you scale that to handle the traffic we expect at [Company]?" (or similar scenario-based questions based on the role).
+Ask scenario-based, role-specific questions for ${job.title} at ${job.company}.
 
 Format the output strictly as a JSON array of strings, for example:
 [
@@ -56,33 +55,34 @@ Format the output strictly as a JSON array of strings, for example:
   "Question 3",
   "Question 4"
 ]
-Do NOT wrap the JSON in markdown code blocks like \`\`\`json. Just output the raw JSON array.
-`;
+Do NOT wrap the JSON in markdown code blocks like \`\`\`json. Just output the raw JSON array.`;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-    });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: prompt,
+        });
 
-    const text = response.text || "[]";
-    let questions: string[] = [];
-    
-    try {
-        questions = JSON.parse(text.trim());
-        if (!Array.isArray(questions)) throw new Error("Not an array");
-    } catch (e) {
-        // Fallback if AI messes up format
-        const lines = text.split('\n').filter(l => l.trim().length > 10);
-        questions = lines.slice(0, 4).map(l => l.replace(/^[\d\-\.\*\[\]"\s]+/, '').trim());
+        const text = response.text || "[]";
+        try {
+          questions = JSON.parse(text.trim());
+          if (!Array.isArray(questions)) questions = [];
+        } catch {
+          const lines = text.split('\n').filter(l => l.trim().length > 10);
+          questions = lines.slice(0, 4).map(l => l.replace(/^[\d\-\.\*\[\]"\s]+/, '').trim());
+        }
+      } catch (aiError: any) {
+        console.warn("[Gemini Interview Prep AI Error]:", aiError.message);
+      }
     }
 
+    // 2. High-quality role-specific fallback if GEMINI_API_KEY is not set or AI call fails
     if (questions.length === 0) {
-        questions = [
-            "Can you walk me through your most complex recent project?",
-            "How does your past experience align with our engineering culture?",
-            "Explain a complex technical problem you solved recently and the trade-offs you made.",
-            "What are the most critical technologies you'd bring to the table for this role?"
-        ];
+      questions = [
+        `Can you walk us through how you would architect and scale a core feature for the ${job.title} position at ${job.company}?`,
+        `Given the technical demands of ${job.company}, how have you resolved critical production incidents or performance bottlenecks in your previous projects?`,
+        `Tell us about a time you had to master a new framework or technology stack under tight delivery deadlines. What was your strategy?`,
+        `How do your previous engineering experiences align with ${job.company}'s engineering culture and goals for the ${job.title} role?`
+      ];
     }
 
     return NextResponse.json({ questions });

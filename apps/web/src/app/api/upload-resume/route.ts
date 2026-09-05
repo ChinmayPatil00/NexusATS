@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       update: { resumeText },
       create: {
         id: userId,
-        email: "placeholder@clerk.com",
+        email: `${userId}@clerk.local`,
         resumeText,
         keywords: '["Software Engineer"]',
         locations: '["Remote"]'

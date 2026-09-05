@@ -3,13 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Users, Target, Activity } from 'lucide-react';
 
 import { jobApi, Job } from '@/lib/api';
+import { useUser } from '@clerk/nextjs';
 
 export default function AnalyticsPage() {
+  const { user } = useUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    jobApi.getJobs()
+    jobApi.getJobs(user?.id)
       .then(data => {
         if (Array.isArray(data)) setJobs(data);
         setLoading(false);
@@ -18,7 +20,7 @@ export default function AnalyticsPage() {
         console.error("Failed to fetch jobs:", err);
         setLoading(false);
       });
-  }, []);
+  }, [user?.id]);
 
   const totalJobs = jobs.length;
   const appliedJobs = jobs.filter(j => ['APPLIED', 'INTERVIEWING', 'OFFER', 'REJECTED'].includes(j.state)).length;

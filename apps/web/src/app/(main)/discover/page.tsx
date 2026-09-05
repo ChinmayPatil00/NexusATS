@@ -6,7 +6,10 @@ import { Search, Loader2, MapPin, Building2, ExternalLink, Sparkles, Filter, Bri
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { useUser } from "@clerk/nextjs";
+
 export default function DiscoverPage() {
+  const { user } = useUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -15,7 +18,7 @@ export default function DiscoverPage() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const data = await jobApi.getJobs();
+        const data = await jobApi.getJobs(user?.id);
         setJobs(data);
       } catch (err) {
         console.error(err);
@@ -28,7 +31,7 @@ export default function DiscoverPage() {
     const intervalId = setInterval(fetchJobs, 3000);
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [user?.id]);
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {

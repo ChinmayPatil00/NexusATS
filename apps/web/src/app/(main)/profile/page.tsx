@@ -1,8 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Code, Link as LinkIcon, Save, CheckCircle2, Loader2, Activity, FileText, UploadCloud } from 'lucide-react';
+import { User, Mail, Phone, Code, Link as LinkIcon, Save, CheckCircle2, Loader2, Activity, FileText, UploadCloud, ShieldCheck, Calendar } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 
 export default function ProfilePage() {
+  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -34,6 +36,16 @@ export default function ProfilePage() {
         setLoading(false);
       });
   }, []);
+
+  // Sync with Clerk user details
+  useEffect(() => {
+    if (clerkUser) {
+      if (!name && clerkUser.fullName) setName(clerkUser.fullName);
+      if (!email && clerkUser.primaryEmailAddress?.emailAddress) {
+        setEmail(clerkUser.primaryEmailAddress.emailAddress);
+      }
+    }
+  }, [clerkUser, name, email]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,13 +94,16 @@ export default function ProfilePage() {
     setUploadingResume(false);
   };
 
-  if (loading) {
+  if (loading && !isClerkLoaded) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
       </div>
     );
   }
+
+  const displayEmail = clerkUser?.primaryEmailAddress?.emailAddress || email;
+  const displayName = clerkUser?.fullName || name || "Nexus ATS Member";
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar bg-[var(--background)] transition-colors">
@@ -97,14 +112,74 @@ export default function ProfilePage() {
           <User className="w-6 h-6 text-indigo-400" />
           <div>
             <h1 className="text-2xl font-bold text-[var(--text-main)] tracking-tight">Your Profile</h1>
-            <p className="text-sm text-[var(--text-muted)] mt-1">These details are used to auto-generate your cover letters.</p>
+            <p className="text-sm text-[var(--text-muted)] mt-1">Manage your account identity and application details.</p>
           </div>
         </div>
       </header>
 
-      <div className="p-8">
+      <div className="p-4 md:p-8">
+        {/* Logged-in Clerk User Info Card */}
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-cyan-500/10 border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden backdrop-blur-sm shadow-sm">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 relative z-10">
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                {clerkUser?.imageUrl ? (
+                  <img
+                    src={clerkUser.imageUrl}
+                    alt={displayName}
+                    className="w-20 h-20 rounded-2xl object-cover border-2 border-indigo-500/30 shadow-md"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                    {(displayName[0] || 'U').toUpperCase()}
+                  </div>
+                )}
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-[var(--background)] flex items-center justify-center" title="Active Clerk Session">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+
+              {/* User Details */}
+              <div className="flex-1 text-center sm:text-left space-y-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <h2 className="text-xl font-black text-[var(--text-main)] tracking-tight">
+                    {displayName}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 w-fit mx-auto sm:mx-0">
+                    <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                    Verified User
+                  </span>
+                </div>
+
+                <p className="text-sm font-medium text-[var(--text-muted)] flex items-center justify-center sm:justify-start gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>{displayEmail || "No email attached"}</span>
+                </p>
+
+                <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-[var(--text-muted)] font-medium">
+                  {clerkUser?.id && (
+                    <span className="bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] font-mono text-[11px]">
+                      ID: {clerkUser.id}
+                    </span>
+                  )}
+                  {clerkUser?.createdAt && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      Joined {new Date(clerkUser.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSave} className="bg-[var(--surface)] border border-[var(--border-subtle)] rounded-3xl p-8 space-y-6 shadow-sm">
+          <form onSubmit={handleSave} className="bg-[var(--surface)] border border-[var(--border-subtle)] rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
+            <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-3">
+              Application & Cover Letter Details
+            </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -124,17 +199,17 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Email</label>
+                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Email (Linked)</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail className="w-4 h-4 text-gray-500" />
                   </div>
                   <input
                     type="email"
-                    value={email}
+                    value={displayEmail}
                     disabled
                     className="w-full bg-[var(--overlay)] border border-[var(--border-subtle)] rounded-xl py-2.5 pl-10 pr-4 text-sm text-[var(--text-muted)] cursor-not-allowed"
-                    title="Email is currently tied to your account and cannot be changed here."
+                    title="Email is synced with your Clerk account."
                   />
                 </div>
               </div>
