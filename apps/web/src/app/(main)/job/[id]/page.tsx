@@ -100,7 +100,7 @@ export default function JobDetailPage() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-7xl mx-auto w-full p-4 lg:p-6 overflow-hidden">
+    <div className="flex flex-col h-full max-w-7xl mx-auto w-full p-4 lg:p-6 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       <div className="flex items-center gap-4 shrink-0 mb-4">
         <button 
           onClick={() => router.back()}
@@ -114,10 +114,10 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 lg:overflow-hidden">
         
         {/* Left Pane */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6 pb-10">
+        <div className="flex-1 lg:overflow-y-auto custom-scrollbar pr-0 lg:pr-2 space-y-6 pb-6 lg:pb-10">
           {/* Header Card */}
           <div className="bg-[var(--surface)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] pointer-events-none" />
@@ -194,7 +194,7 @@ export default function JobDetailPage() {
         </div>
 
         {/* Right Pane (Sidebar) */}
-        <div className="w-full lg:w-[400px] shrink-0 overflow-y-auto custom-scrollbar pr-2 space-y-6 pb-10">
+        <div className="w-full lg:w-[400px] shrink-0 lg:overflow-y-auto custom-scrollbar pr-0 lg:pr-2 space-y-6 pb-10">
           
           {/* AI Match Rationale */}
           {job.matchScore !== undefined && job.matchRationale && (

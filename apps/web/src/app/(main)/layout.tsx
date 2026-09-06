@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/Sidebar";
+import { MobileHeader } from "@/components/MobileHeader";
 
 export default function MainLayout({
   children,
@@ -14,7 +15,10 @@ export default function MainLayout({
       
       <Sidebar />
       <div className="flex-1 flex flex-col relative z-10 overflow-hidden pb-16 md:pb-0">
-        {children}
+        <MobileHeader />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {children}
+        </div>
       </div>
     </div>
   );

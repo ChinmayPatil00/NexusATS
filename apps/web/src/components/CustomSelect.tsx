@@ -45,7 +45,7 @@ export default function CustomSelect({ value, options, onChange, icon, className
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className={`absolute top-full left-0 mt-2 max-h-64 overflow-y-auto custom-scrollbar bg-[var(--surface)]/95 backdrop-blur-2xl border border-[var(--border-strong)] rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] z-[100] py-1 ${dropdownClassName}`}
+            className={`absolute top-full left-0 mt-2 max-h-64 max-w-[calc(100vw-2rem)] overflow-y-auto custom-scrollbar bg-[var(--surface)]/95 backdrop-blur-2xl border border-[var(--border-strong)] rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] z-[100] py-1 ${dropdownClassName}`}
           >
             {options.map((opt) => (
               <button

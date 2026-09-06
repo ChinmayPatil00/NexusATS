@@ -19,30 +19,36 @@ export function Sidebar() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/discover", label: "Discover", icon: Search },
-    { href: "/startups", label: "Discover Startups", icon: Rocket },
-    { href: "/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/profile", label: "Profile", icon: User },
-    { href: "/about", label: "About", icon: Info },
+    { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
+    { href: "/discover", label: "Discover", shortLabel: "Discover", icon: Search },
+    { href: "/startups", label: "Discover Startups", shortLabel: "Startups", icon: Rocket },
+    { href: "/analytics", label: "Analytics", shortLabel: "Analytics", icon: BarChart3 },
+    { href: "/profile", label: "Profile", shortLabel: "Profile", icon: User },
+    { href: "/about", label: "About", shortLabel: "About", icon: Info },
   ];
+
+  const mobileNavLinks = navLinks.filter(l => l.href !== "/about");
 
   return (
     <>
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border-subtle)] pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center justify-around p-3">
-          {navLinks.map((link) => {
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--border-subtle)] pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.08)]">
+        <div className="flex items-center justify-around px-2 py-2">
+          {mobileNavLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
             return (
               <Link 
                 key={link.href} 
                 href={link.href}
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive ? 'text-indigo-500' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all ${
+                  isActive 
+                    ? 'text-indigo-600 dark:text-indigo-400 font-bold' 
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] font-medium'
+                }`}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-bold tracking-wide">{link.label}</span>
+                <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
+                <span className="text-[10px] mt-1 tracking-tight truncate max-w-full">{link.shortLabel}</span>
               </Link>
             );
           })}
